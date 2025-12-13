@@ -3,9 +3,9 @@ import requests
 
 app = Flask(__name__)
 
-BOT_TOKEN = "701157315:XDmG4q7-piljOKPwehXPpFEEzogyCkcN8JA"
-SUPABASE_URL = "https://znasqapborqzekhaahmv.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuYXNxYXBib3JxemVraGFhaG12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NDI1OTgsImV4cCI6MjA4MTIxODU5OH0.-Kb8Taz58YjjzZBVqTr_TmmzdsAYqEI2miQYmzoEXHM"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_URL")
 
 @app.route("/", methods=["POST"])
 def webhook():
