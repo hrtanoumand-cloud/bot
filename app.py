@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # مقادیر محیطی (Environment Variables)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")  # مثلا https://xyzcompany.supabase.co
+SUPABASE_URL = os.getenv("SUPABASE_URL")  # مثلا https://db.znasqapborqzekhaahmv.supabase.co
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Service Role Key یا Anon Key با دسترسی خواندن
 
 @app.route("/", methods=["POST"])
@@ -25,7 +25,9 @@ def webhook():
 
     # URL-encode کردن متن کاربر
     query = quote(user_text)
-    url = f"{SUPABASE_URL}/rest/v1/responses?keyword=eq.{query}&select=answer"
+
+    # جستجوی case-insensitive با ilike
+    url = f"{SUPABASE_URL}/rest/v1/responses?keyword=ilike.{query}&select=answer"
 
     headers = {
         "apikey": SUPABASE_KEY,
