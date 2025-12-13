@@ -1,13 +1,14 @@
 from flask import Flask, request
 import requests
 import os
+from urllib.parse import quote
 
 app = Flask(__name__)
 
+# مقادیر محیطی (Environment Variables)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
+SUPABASE_URL = os.getenv("SUPABASE_URL")  # مثلا https://xyzcompany.supabase.co
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Service Role Key یا Anon Key با دسترسی خواندن
 
 @app.route("/", methods=["POST"])
 def webhook():
@@ -22,7 +23,9 @@ def webhook():
     if not user_text:
         return "ok"
 
-    url = f"{SUPABASE_URL}/rest/v1/responses?keyword=eq.{user_text}"
+    # URL-encode کردن متن کاربر
+    query = quote(user_text)
+    url = f"{SUPABASE_URL}/rest/v1/responses?keyword=eq.{query}&select=answer"
 
     headers = {
         "apikey": SUPABASE_KEY,
@@ -35,32 +38,30 @@ def webhook():
     try:
         r = requests.get(url, headers=headers, timeout=10)
 
-        # اگر Supabase خطا داد
         if r.status_code != 200:
-            answer = "❌ خطا در ارتباط با دیتابیس"
+            answer = f"❌ خطا در ارتباط با دیتابیس (کد {r.status_code})"
         else:
             result = r.json()
-
-            # اگر خروجی لیست بود و حداقل یک رکورد داشت
             if isinstance(result, list) and len(result) > 0:
-                if isinstance(result[0], dict) and "answer" in result[0]:
-                    answer = result[0]["answer"]
+                answer = result[0].get("answer", answer)
 
     except Exception as e:
-        answer = "❌ خطای غیرمنتظره در سرور"
+        answer = f"❌ خطای غیرمنتظره در سرور: {str(e)}"
 
-    # ارسال پاسخ به بله
-    requests.post(
-        f"https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage",
-        json={
-            "chat_id": chat_id,
-            "text": answer
-        },
-        timeout=10
-    )
+    # ارسال پاسخ به ربات بله
+    try:
+        requests.post(
+            f"https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": answer
+            },
+            timeout=10
+        )
+    except Exception as e:
+        print(f"خطا در ارسال پیام به بله: {e}")
 
     return "ok"
-
 
 if __name__ == "__main__":
     app.run(
