@@ -5,10 +5,20 @@ from urllib.parse import quote
 
 app = Flask(__name__)
 
-# مقادیر محیطی (Environment Variables)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")  # مثلا https://db.znasqapborqzekhaahmv.supabase.co
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # Service Role Key یا Anon Key با دسترسی خواندن
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+WELCOME_TEXT = """
+👋 سلام
+به سامانه پیگیری «صدای همکار» شرکت پرداخت الکترونیک سداد خوش آمدید.
+
+در این ربات می‌توانید:
+• پیگیری وضعیت درخواست‌ها
+• مشاهده پاسخ ثبت‌شده
+
+✍️ لطفاً کد یا عبارت موردنظر خود را ارسال کنید.
+"""
 
 @app.route("/", methods=["POST"])
 def webhook():
@@ -23,10 +33,19 @@ def webhook():
     if not user_text:
         return "ok"
 
-    # URL-encode کردن متن کاربر
-    query = quote(user_text)
+    # مدیریت دستور start
+    if user_text == "/start":
+        requests.post(
+            f"https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": WELCOME_TEXT
+            }
+        )
+        return "ok"
 
-    # جستجوی case-insensitive با ilike
+    # جستجو در دیتابیس
+    query = quote(user_text)
     url = f"{SUPABASE_URL}/rest/v1/responses?keyword=ilike.{query}&select=answer"
 
     headers = {
@@ -39,34 +58,24 @@ def webhook():
 
     try:
         r = requests.get(url, headers=headers, timeout=10)
-
-        if r.status_code != 200:
-            answer = f"❌ خطا در ارتباط با دیتابیس (کد {r.status_code})"
-        else:
+        if r.status_code == 200:
             result = r.json()
             if isinstance(result, list) and len(result) > 0:
                 answer = result[0].get("answer", answer)
+        else:
+            answer = "❌ خطا در ارتباط با دیتابیس"
+    except Exception:
+        answer = "❌ خطای سرور"
 
-    except Exception as e:
-        answer = f"❌ خطای غیرمنتظره در سرور: {str(e)}"
-
-    # ارسال پاسخ به ربات بله
-    try:
-        requests.post(
-            f"https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": answer
-            },
-            timeout=10
-        )
-    except Exception as e:
-        print(f"خطا در ارسال پیام به بله: {e}")
+    requests.post(
+        f"https://tapi.bale.ai/bot{BOT_TOKEN}/sendMessage",
+        json={
+            "chat_id": chat_id,
+            "text": answer
+        }
+    )
 
     return "ok"
 
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000))
-    )
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
